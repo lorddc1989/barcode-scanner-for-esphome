@@ -94,7 +94,7 @@ text_sensor:
 
 uart:
   id: uart_bus
-  baud_rate: 9600
+  baud_rate: 57600
   tx_pin: "${uart_tx_pin}"
   rx_pin: "${uart_rx_pin}"
   debug:
