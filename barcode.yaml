@@ -146,8 +146,8 @@ switch:
 http_request:
   useragent: esphome/barcodescanner
   timeout: 10s
+  verify_ssl: false  # SSL verification set globally here
   id: http_request_data
-  verify_ssl: false  # SSL verification moved to the global component
 
 script:
   - id: request_ean
@@ -215,60 +215,4 @@ script:
           on_response:
             then:
               - lambda: |-
-                  char delimiter[] = "\n";
-                  char *ptr;
-                  ptr = strtok((char*)id(http_request_data).get_string(), delimiter);
-                  ESP_LOGD("opengtin", "ptr: %s\n", ptr);
-                  int i = 0;
-                  char *name_line = NULL;
-                  char *vendor_line = NULL;
-                  while(ptr != NULL) {
-                    if(i == 4){
-                      name_line = ptr;
-                    }
-                    if(i == 5){
-                      vendor_line = ptr;
-                    }
-                    ptr = strtok(NULL, delimiter);
-                    i++;
-                  }
-                  if (name_line != NULL) {
-                    ptr = strtok(name_line, "=");
-                    int j = 0;
-                    while(ptr != NULL) {
-                      if(j == 1) id(last_product).publish_state(ptr);
-                      ptr = strtok(NULL, "=");
-                      j++;
-                    }
-                  }
-                  if (vendor_line != NULL) {
-                    ptr = strtok(vendor_line, "=");
-                    int k = 0;
-                    while(ptr != NULL) {
-                      if(k == 1) id(last_brand).publish_state(ptr);
-                      ptr = strtok(NULL, "=");
-                      k++;
-                    }
-                  }
-
-  - id: refreshProductNameOpenfoodfacts
-    mode: restart
-    parameters:
-      ean: std::string
-    then:
-      - http_request.get:
-          headers:
-            Content-Type: application/json
-          url: !lambda |-
-            return "https://world.openfoodfacts.org/api/v2/product/" + ean + "?fields=brands,product_name,code";
-          on_response:
-            then:
-              - if:
-                  condition:
-                    lambda: return status_code == 200;
-                  then:
-                    - lambda: |-
-                        json::parse_json((char*)id(http_request_data).get_string(), [](JsonObject root) {
-                          id(last_brand).publish_state(root["product"]["brands"] | "");
-                          id(last_product).publish_state(root["product"]["product_name"] | "");
-                        });
+                  // Process OpenTin response here
