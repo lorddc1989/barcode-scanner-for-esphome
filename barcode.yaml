@@ -2,25 +2,29 @@ substitutions:
   name: "barcode-scanner"
   friendly_name: "Barcode Scanner"
 
-  # Query ID for opentindb (https://opengtindb.org/api.php)
+  # Query ID für opentindb (https://opengtindb.org/api.php)
   rest_opentindb_queryid: "400000000"
 
-  # I2C pins for the display
+  # I2C-Pins fürs Display
   display_i2c_sda: GPIO21
   display_i2c_scl: GPIO22
 
-  # I2C address for the OLED display
+  # I2C-Adresse des OLED Displays
   ssd1306_i2c_address: "0x3C"
 
-  # UART pins for the barcode scanner
+  # UART-Pins für den Barcode-Scanner
   uart_tx_pin: GPIO17
   uart_rx_pin: GPIO16
 
-  # Pin for the buzzer/beeper
+  # Pin des Buzzer/Beeper
   beeper_pin: GPIO4
 
 esp32:
   board: wemos_d1_mini32
+
+# ----------------------------------
+# ----       CONFIG END         ----
+# ----------------------------------
 
 esphome:
   name: "${name}"
@@ -37,6 +41,7 @@ dashboard_import:
   import_full_config: false
 
 ota:
+  - platform: esphome
 
 api:
   services:
@@ -51,13 +56,15 @@ api:
 wifi:
   ap:
     password: "12345678"
-
+    
 improv_serial:
 
 captive_portal:
 
 logger:
   hardware_uart: UART0
+
+# ---------------------------------------------
 
 globals:
   - id: xpos_ean
@@ -80,7 +87,7 @@ text_sensor:
             condition:
               - lambda: 'return id(barcode_scanner).state != "unknown";'
             then:
-              - script.execute:
+              - script.execute: 
                   id: request_ean
                   ean: !lambda return x.c_str();
 
@@ -93,6 +100,7 @@ text_sensor:
   - platform: template
     id: last_product
     name: "${friendly_name} Product"
+
 
 uart:
   id: uart_bus
@@ -112,6 +120,7 @@ uart:
             std::string s(bytes.begin(), bytes.end());
             return s;
 
+
 font:
   - file: "_fonts/arial.ttf"
     id: arial_font_18
@@ -119,7 +128,7 @@ font:
   - file: "_fonts/arial.ttf"
     id: arial_font
     size: 20
-    glyphs: >-
+    glyphs:  >-
       ß!?"%()+*=,-_.:°ø0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZÄÜÖ abcdefghijklmnopqrstuvwxyzäüö€@<>/
 
 i2c:
@@ -145,19 +154,20 @@ display:
       it.get_text_bounds(0, 0, id(last_brand).state.c_str(), id(arial_font), TextAlign::TOP_LEFT, &x_start, &y_start, &brand_width, &height);
       it.get_text_bounds(0, 0, id(last_product).state.c_str(), id(arial_font), TextAlign::TOP_LEFT, &x_start, &y_start, &prod_width, &height);
 
-      if (id(xpos_ean) > (-1 * ean_width) - 30 && ean_width > 128) {
+      if (id(xpos_ean) > (-1*ean_width)-30 && ean_width>128) {
         id(xpos_ean) -= 10;
       } else {
         id(xpos_ean) = 0;
       }
 
-      if (id(xpos_brand) > (-1 * brand_width) - 30 && brand_width > 128) {
+      if (id(xpos_brand) > (-1*brand_width)-30 && brand_width>128) {
         id(xpos_brand) -= 10;
       } else {
         id(xpos_brand) = 0;
       }
 
-      if (id(xpos_prod) > (-1 * prod_width) - 30 && prod_width > 128) {
+      int prod_len = strlen(id(last_product).state.c_str());
+      if (id(xpos_prod) > (-1*prod_width)-30 && prod_width>128) {
         id(xpos_prod) -= 10;
       } else {
         id(xpos_prod) = 0;
@@ -174,7 +184,7 @@ http_request:
   timeout: 10s
   id: http_request_data
   verify_ssl: false
-
+  
 script:
   - id: request_ean
     parameters:
@@ -184,7 +194,7 @@ script:
       - switch.turn_on: beeper
       - delay: 50ms
       - switch.turn_off: beeper
-      - script.execute:
+      - script.execute: 
           id: getEanData
           ean: !lambda return ean.c_str();
       - delay: 500ms
@@ -201,9 +211,11 @@ script:
       - lambda: |-
           ESP_LOGD("getEanData", "Scanned EAN: %s\n", ean);
       - lambda: id(last_ean).publish_state(ean);
-      - script.execute:
+      - script.execute: 
           id: refreshProductNameOpenfoodfacts
           ean: !lambda return ean.c_str();
+      - lambda: |-
+          ESP_LOGD("getEanData", "Openfoodfacts result: %s\n", id(last_product).state.c_str());
       - delay: 500ms
       - if:
           condition:
@@ -215,51 +227,114 @@ script:
                   id: last_product
                   state: ''
           then:
-            - script.execute:
+            - script.execute: 
                 id: refreshProductNameOpenTin
                 ean: !lambda return ean.c_str();
+            - lambda: |-
+                ESP_LOGD("getEanData", "OpenTinDb result: %s\n", id(last_product).state.c_str());
+
+      - if:
+          condition:
+            text_sensor.state:
+              id: last_product
+              state: 'null'
+          then:
+              - switch.turn_on: beeper
+              - delay: 800ms
+              - switch.turn_off: beeper
+          else:
+              - switch.turn_on: beeper
+              - delay: 50ms
+              - switch.turn_off: beeper
+
+      - delay: 10s
+      - script.execute: clearProductData
+      - lambda: id(last_ean).publish_state("Scan Barcode");
+
 
   - id: clearProductData
     mode: restart
-    then:
+    then: 
       - lambda: id(last_ean).publish_state("");
       - lambda: id(last_brand).publish_state("");
       - lambda: id(last_product).publish_state("");
-
+      
   - id: refreshProductNameOpenTin
     mode: restart
     parameters:
       ean: std::string
     then:
-      - http_request.get:
-          url: !lambda |- 
-            return "https://opengtindb.org/?ean=" + ean + "&cmd=query&queryid=${rest_opentindb_queryid}";
+      - http_request.get:          
+          url: !lambda |-
+                  return (std::string) "https://opengtindb.org/?ean=" + ean + "&cmd=query&queryid=${rest_opentindb_queryid}";
           on_response:
             then:
               - lambda: |-
-                  const char *response = id(http_request_data).get_string().value_or("").c_str();
-                  // Parsing response logic here...
+                  char delimiter[] = "\n";
+                  char *ptr;
+                  ptr = strtok((char*)id(http_request_data).get_string(), delimiter);
+                  ESP_LOGD("opengtin", "ptr: %s\n", ptr);
+                  int i = 0;
+                  char *name_line = NULL;
+                  char *vendor_line = NULL;
+                  while(ptr != NULL) {
+                    if(i == 4){
+                      name_line = ptr;
+                    }
+                    if(i == 5){
+                      vendor_line = ptr;
+                    }                    
+                    ptr = strtok(NULL, delimiter);
+                    i++;
+                  }
+                  ptr = strtok(name_line, {"="});
+                  i=0;
+                  while(ptr != NULL) {
+                    if(i == 1){
+                      ESP_LOGD("opengtin", "Name: %s\n", ptr);
+                      id(last_product).publish_state(ptr);
+                    }                    
+                    ptr = strtok(NULL, delimiter);
+                    i++;
+                  }
+                  ptr = strtok(vendor_line, {"="});
+                  i=0;
+                  while(ptr != NULL) {
+                    if(i == 1){
+                      ESP_LOGD("opengtin", "Firma: %s\n", ptr);
+                      id(last_brand).publish_state(ptr);
+                    }                    
+                    ptr = strtok(NULL, delimiter);
+                    i++;
+                  }
 
   - id: refreshProductNameOpenfoodfacts
     mode: restart
     parameters:
       ean: std::string
     then:
-      - http_request.get:
+      - http_request.get:          
           headers:
-            Content-Type: application/json
-          url: !lambda |- 
-            return "https://world.openfoodfacts.org/api/v2/product/" + ean + "?fields=brands,product_name,code";
+            Content-Type: application/json          
+          url: !lambda |-      
+            std::string url = "https://world.openfoodfacts.org/api/v2/product/" + ean + "?fields=brands,product_name,code";
+            ESP_LOGD("openFood", "API: %s\n", url.c_str());
+            return url;
+
           on_response:
             then:
               - if:
                   condition:
-                    lambda: |-
-                      return response->status_code == 200;
-                  then:
+                     lambda: |-
+                        return status_code == 200;
+                  then:              
                     - lambda: |-
-                        const char *ptr = id(http_request_data).get_string().value_or("").c_str();
+                        char *ptr;
+                        ptr = (char*)id(http_request_data).get_string();
+                        ESP_LOGD("custom", "ptr: %s\n", ptr);
                         json::parse_json(ptr, [](JsonObject root) {
-                          id(last_brand).publish_state(root["product"]["brands"].as<const char*>());
-                          id(last_product).publish_state(root["product"]["product_name"].as<const char*>());
+                          std::string jsonStr;
+                          id(last_brand).publish_state(root["product"]["brands"]);
+                          id(last_product).publish_state(root["product"]["product_name"]);
                         });
+                  
