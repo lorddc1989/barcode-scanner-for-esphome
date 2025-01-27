@@ -264,8 +264,7 @@ script:
     parameters:
       ean: std::string
     then:
-      - http_request.get:
-          
+      - http_request.get:          
           url: !lambda |-
                   return (std::string) "https://opengtindb.org/?ean=" + ean + "&cmd=query&queryid=${rest_opentindb_queryid}";
           on_response:
@@ -273,7 +272,7 @@ script:
               - lambda: |-
                   char delimiter[] = "\n";
                   char *ptr;
-                  ptr = strtok((char*)id(http_request_data).get, delimiter);
+                  ptr = strtok((char*)id(http_request_data).get_string(), delimiter);
                   ESP_LOGD("opengtin", "ptr: %s\n", ptr);
                   int i = 0;
                   char *name_line = NULL;
@@ -314,8 +313,7 @@ script:
     parameters:
       ean: std::string
     then:
-      - http_request.get:
-          
+      - http_request.get:          
           headers:
             Content-Type: application/json          
           url: !lambda |-      
@@ -332,7 +330,7 @@ script:
                   then:              
                     - lambda: |-
                         char *ptr;
-                        ptr = (char*)id(http_request_data).get;
+                        ptr = (char*)id(http_request_data).get_string();
                         ESP_LOGD("custom", "ptr: %s\n", ptr);
                         json::parse_json(ptr, [](JsonObject root) {
                           std::string jsonStr;
