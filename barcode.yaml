@@ -273,7 +273,7 @@ script:
               - lambda: |-
                   char delimiter[] = "\n";
                   char *ptr;
-                  ptr = strtok((char*)id(http_request_data).get_string(), delimiter);
+                  ptr = strtok((char*)id(http_request_data).get, delimiter);
                   ESP_LOGD("opengtin", "ptr: %s\n", ptr);
                   int i = 0;
                   char *name_line = NULL;
