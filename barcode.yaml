@@ -332,7 +332,7 @@ script:
                   then:              
                     - lambda: |-
                         char *ptr;
-                        ptr = (char*)id(http_request_data).get_string();
+                        ptr = (char*)id(http_request_data).get;
                         ESP_LOGD("custom", "ptr: %s\n", ptr);
                         json::parse_json(ptr, [](JsonObject root) {
                           std::string jsonStr;
