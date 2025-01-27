@@ -13,11 +13,11 @@ substitutions:
   ssd1306_i2c_address: "0x3C"
 
   # UART-Pins für den Barcode-Scanner
-  uart_tx_pin: GPIO09
-  uart_rx_pin: GPIO10
+  uart_tx_pin: GPIO17
+  uart_rx_pin: GPIO16
 
   # Pin des Buzzer/Beeper
-  beeper_pin: GPIO16
+  beeper_pin: GPIO4
 
 esp32:
   board: wemos_d1_mini32
@@ -37,7 +37,7 @@ esphome:
       - lambda: id(last_ean).publish_state("Scan Barcode");
 
 dashboard_import:
-  package_import_url: github://SmartHome-yourself/barcode-scanner-for-esphome/barcode.yaml@main
+  package_import_url: github://lorddc1989/barcode-scanner-for-esphome/barcode.yaml@main
   import_full_config: false
 
 ota:
@@ -128,7 +128,7 @@ font:
   - file: "_fonts/arial.ttf"
     id: arial_font
     size: 20
-    glyphs:  |
+    glyphs:  >-
       ß!?"%()+*=,-_.:°ø0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZÄÜÖ abcdefghijklmnopqrstuvwxyzäüö€@<>/
 
 i2c:
@@ -265,7 +265,7 @@ script:
       ean: std::string
     then:
       - http_request.get:
-          verify_ssl: false
+          
           url: !lambda |-
                   return (std::string) "https://opengtindb.org/?ean=" + ean + "&cmd=query&queryid=${rest_opentindb_queryid}";
           on_response:
@@ -315,7 +315,7 @@ script:
       ean: std::string
     then:
       - http_request.get:
-          verify_ssl: false
+          
           headers:
             Content-Type: application/json          
           url: !lambda |-      
